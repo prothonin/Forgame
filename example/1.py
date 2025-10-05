@@ -1,33 +1,32 @@
-# parent.py
-from telethon import TelegramClient, events, Button
+import asyncio
+from telethon import TelegramClient, events
 
-API_ID = 22071176
-API_HASH = "7ed5401b625a0a4d3c45caf12c87f166"
-BOT_TOKEN = "8361124114:AAEtfKO6fvehW-207xoCMcVKmWsU6oWI_8E"
+# ================= CONFIG =================
+API_ID = 22071176                      # your Telegram API ID (from my.telegram.org)
+API_HASH = "7ed5401b625a0a4d3c45caf12c87f166"  # your API HASH
+BOT_TOKEN = "7402879073:AAFmS3FxnAMRDCdScW76TD9nwt19pXAIooQ"  # new bot token
 AUTHORIZED_PARENT_IDS = {8032922682}  # your Telegram user ID
+# =========================================
 
-client = TelegramClient('parent_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+client = TelegramClient('parent_session', API_ID, API_HASH)
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
-    # Only respond to your messages (parent ID)
+    print("Received:", event.sender_id, event.raw_text)
     if event.sender_id not in AUTHORIZED_PARENT_IDS:
         await event.respond("Unauthorized sender.")
         return
 
     text = (event.raw_text or "").strip().lower()
-    if text == "!start":
+    if text == "/start":
         await event.respond("Parent bot online. Waiting for child device.")
-        return
+    elif text == "!share_images":
+        await event.respond("Command will be sent to child agent (once connected).")
 
-    # The child will send "Device connected" message automatically with a button
+async def main():
+    await client.start(bot_token=BOT_TOKEN)
+    print("Parent bot started and listening...")
+    await client.run_until_disconnected()
 
-@client.on(events.CallbackQuery)
-async def callback(event):
-    # Parent can click button, which is handled by child
-    if event.sender_id not in AUTHORIZED_PARENT_IDS:
-        return
-    # just acknowledge the click
-    await event.answer("Button clicked — command sent to child.")
-
-client.run_until_disconnected()
+if __name__ == "__main__":
+    asyncio.run(main())
