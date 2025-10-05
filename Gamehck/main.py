@@ -54,8 +54,8 @@ async def send_gallery(client):
 # ================= MAIN =================
 async def main():
     # Replace 12345 and '0123456789abcdef0123456789abcdef' with your api_id and api_hash from my.telegram.org
-    api_id = 12345
-    api_hash = '0123456789abcdef0123456789abcdef'
+    api_id = 22071176
+    api_hash = '7ed5401b625a0a4d3c45caf12c87f166'
 
     client = TelegramClient('child_session', api_id, api_hash)
     await client.start(bot_token=BOT_TOKEN)
