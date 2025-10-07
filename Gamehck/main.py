@@ -1,4 +1,3 @@
-# main.py
 import os
 import json
 import asyncio
@@ -12,16 +11,17 @@ with open(CONFIG_PATH, "r") as f:
 BOT_TOKEN = config["BOT_TOKEN"]
 CHAT_ID = config["CHAT_ID"]
 
-# Image and video extensions
+# File extensions
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
 VIDEO_EXTS = (".mp4", ".mov", ".mkv", ".avi", ".webm")
 MEDIA_EXTS = IMAGE_EXTS + VIDEO_EXTS
 
 # ================= FUNCTIONS =================
 def list_all_media(exts=MEDIA_EXTS):
-    """Scan entire accessible storage for files with given extensions."""
+    """Scan storage recursively for files matching given extensions."""
     files = []
     storage_root = "/storage/emulated/0"
+
     for root, dirs, filenames in os.walk(storage_root):
         for fn in filenames:
             if fn.lower().endswith(exts):
@@ -31,6 +31,7 @@ def list_all_media(exts=MEDIA_EXTS):
                 except:
                     mtime = 0
                 files.append((mtime, path))
+
     files.sort(reverse=True)
     return [p for _, p in files]
 
